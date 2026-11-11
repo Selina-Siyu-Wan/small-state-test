@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Small State Survival Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: one narrow column of case-file cards on a desk; each question is a numbered file, each answer gets a rubber stamp. */
+:root {
+  --bg: #E2D8BD;
+  --surface: #F2EAD6;
+  --ink: #14231E;
+  --muted: #56625A;
+  --line: #BBAE8C;
+  --stamp: #B32E25;
+  --gold: #86670F;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1A17; --surface: #18261F; --ink: #E8DCC0; --muted: #9BA696;
+    --line: #2F4138; --stamp: #E25A4D; --gold: #C9A227; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1A17; --surface: #18261F; --ink: #E8DCC0; --muted: #9BA696;
+  --line: #2F4138; --stamp: #E25A4D; --gold: #C9A227; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 16px; line-height: 1.6;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.mast { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.mast b { color: var(--ink); font-weight: 500; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(32px, 8.5vw, 50px); font-weight: 900; line-height: 1.08; letter-spacing: -.01em; }
+h1 em { font-style: italic; color: var(--stamp); }
+h2 { font-size: clamp(21px, 5.4vw, 27px); font-weight: 600; line-height: 1.3; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 36em; }
+section { display: flex; flex-direction: column; gap: 18px; }
+
+.types { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.types li { border-top: 2px solid var(--ink); padding-top: 7px; min-width: 0; }
+.types strong { font-family: var(--display); font-size: 18px; display: block; line-height: 1.25; }
+.types span { font-size: 13px; color: var(--muted); display: block; line-height: 1.45; }
+@media (max-width: 400px) { .types { grid-template-columns: 1fr; } }
+
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.primary { align-self: flex-start; background: var(--ink); color: var(--bg); border: 0; padding: 12px 24px;
+  font-weight: 700; letter-spacing: .02em; border-radius: 2px; }
+.primary:hover { background: var(--stamp); color: var(--surface); }
+.ghost { background: none; border: 1px solid var(--line); padding: 10px 18px; border-radius: 2px; }
+.ghost:hover { border-color: var(--ink); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+.file { background: var(--surface); border: 1px solid var(--line); padding: 22px 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+.fileno { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 12px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums; }
+.track { height: 3px; background: var(--line); }
+.track i { display: block; height: 100%; background: var(--stamp); transition: width .25s; }
+.opts { display: flex; flex-direction: column; gap: 10px; }
+.opt { display: flex; gap: 14px; align-items: flex-start; text-align: left; background: none;
+  border: 1px solid var(--line); padding: 13px 14px; border-radius: 2px; min-width: 0; }
+.opt:hover { border-color: var(--ink); }
+.opt .ltr { flex: none; width: 30px; height: 30px; border: 2px solid var(--muted); color: var(--muted); border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: 15px; }
+.opt .txt { min-width: 0; padding-top: 2px; }
+.opt[aria-pressed="true"] { border-color: var(--stamp); }
+.opt[aria-pressed="true"] .ltr { border-color: var(--stamp); color: var(--stamp); transform: rotate(-9deg); }
+
+.result { position: relative; }
+.kicker { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.bigname { font-family: var(--display); font-weight: 900; font-size: clamp(32px, 9vw, 48px); line-height: 1.08; overflow-wrap: anywhere; }
+.seal { align-self: flex-end; margin-bottom: -10px; border: 3px solid var(--stamp); color: var(--stamp);
+  font-family: var(--mono); font-weight: 500; font-size: 13px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 5px 10px; transform: rotate(5deg); white-space: nowrap; line-height: 1.2; }
+.tag { color: var(--gold); font-weight: 700; margin-top: 4px; }
+dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; }
+dt { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 4px; white-space: nowrap; }
+dd { margin: 0; min-width: 0; }
+h3 { font-size: 18px; font-weight: 600; border-top: 1px solid var(--line); padding-top: 16px; }
+.bars { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; font-size: 14px; }
+.bars .bar { height: 10px; background: var(--line); }
+.bars .bar i { display: block; height: 100%; background: var(--muted); }
+.bars .top i { background: var(--stamp); }
+.bars .n { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; }
+.stats div { border: 1px solid var(--line); padding: 8px 2px; min-width: 0; }
+.stats b { display: block; font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.stats span { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.note { font-size: 13px; color: var(--muted); }
+#copied { font-size: 13px; color: var(--gold); }
+@media (prefers-reduced-motion: reduce) { .track i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="mast"><span><b>The Decision Room</b> · Episode 1</span><span>Small State Survival Guide</span></div>
+
+  <section id="intro">
+    <h1>Stuck between great powers, <em>which leader</em> are you?</h1>
+    <p class="lede">Sixteen files land on your desk. Each one needs a decision. At the end you get a dossier: the real leader of a small country who played it the way you did, and what happened to them. About four minutes.</p>
+    <ul class="types">
+      <li><strong>Accommodate</strong><span>Give the giant next door what it needs to feel safe</span></li>
+      <li><strong>Hedge</strong><span>Get strong, then make every power need you</span></li>
+      <li><strong>Walk the tightrope</strong><span>No army to speak of, just your own diplomacy</span></li>
+      <li><strong>Find a patron</strong><span>Side with the giant's rival</span></li>
+      <li><strong>Refuse both camps</strong><span>Say no to each bloc and build a third</span></li>
+      <li><strong>Bend and reform</strong><span>Give up the edges, keep the core, modernise fast</span></li>
+      <li><strong>Trust the guarantees</strong><span>Treaties, allies and international law</span></li>
+      <li><strong>Fortress</strong><span>Trust no one and seal the borders</span></li>
+    </ul>
+    <button class="primary" id="start" type="button">Open the first file</button>
+    <p class="note">There are no right answers. Every one of these routes was tried by someone, with very different endings.</p>
+  </section>
+
+  <section id="quiz" hidden>
+    <div class="file">
+      <div class="fileno"><span id="qno"></span><span id="qtag"></span></div>
+      <div class="track"><i id="prog"></i></div>
+      <h2 id="qtext"></h2>
+      <div class="opts" id="opts"></div>
+    </div>
+    <div class="row"><button class="ghost" id="back" type="button">Previous file</button></div>
+  </section>
+
+  <section id="result" hidden>
+    <div class="file result">
+      <div class="seal" id="seal"></div>
+      <div>
+        <p class="kicker">Your dossier</p>
+        <p class="bigname" id="rname"></p>
+        <p class="tag" id="rtag"></p>
+      </div>
+      <p id="rstyle"></p>
+      <h3 id="rwho"></h3>
+      <dl>
+        <dt>Situation</dt><dd id="r1"></dd>
+        <dt>Playbook</dt><dd id="r2"></dd>
+        <dt>Outcome</dt><dd id="r3"></dd>
+        <dt>The catch</dt><dd id="r4"></dd>
+      </dl>
+      <h3>The country this route leaves behind</h3>
+      <div class="stats" id="stats"></div>
+      <p class="note">Scores out of 10 are game values invented for this test, not historical data.</p>
+      <h3>Your sixteen decisions</h3>
+      <div class="bars" id="bars"></div>
+      <p id="second" class="note"></p>
+    </div>
+    <div class="row">
+      <button class="primary" id="copy" type="button">Copy my result</button>
+      <button class="ghost" id="again" type="button">Take it again</button>
+      <span id="copied" role="status"></span>
+    </div>
+    <p class="note" id="sharetext"></p>
+  </section>
+</div>
+
+<script>
+(function () {
+  // K accommodate · L hedge · S tightrope · C patron · T refuse both · B bend & reform · G guarantees · H fortress
+  // Each type is offered exactly 8 times across the 16 files.
+  var Q = [
+    ["Day one", "The ambassador of the giant next door hands you a list. From now on, major foreign policy decisions get cleared with them first.", [
+      ["K", "Accept, in exchange for a promise to stay out of my domestic affairs."],
+      ["L", "Thank him politely, go home, and move the conscription plan forward."],
+      ["S", "Agree warmly, then leak the list to the other great power."],
+      ["C", "Refuse on the spot and visit their rival the next morning."]]],
+    ["Border", "The giant demands a strip of your border territory, for its own security.", [
+      ["T", "Refuse in public, tell the whole world, and dare them to try."],
+      ["B", "Hand over the strip, keep the capital and my independence, and use the time to modernise."],
+      ["G", "Take it to the international court and invoke my treaty with distant allies."],
+      ["H", "Refuse, mine the frontier and put a rifle in every village."]]],
+    ["Treasury", "This year's budget can pay for exactly one big thing.", [
+      ["K", "The trade deal the giant has been asking for. Keep the relationship steady."],
+      ["S", "A grand tour of every major capital. I will charm them one by one."],
+      ["T", "A founding conference for small states that refuse to join either bloc."],
+      ["G", "A first-rate diplomatic corps and a stack of signed treaties with faraway powers."]]],
+    ["Army", "Your army is a joke. How do you fix it?", [
+      ["L", "Universal conscription and my own arms industry."],
+      ["C", "Weapons and advisers from the giant's rival."],
+      ["B", "Hire foreign officers to rebuild it on modern lines and send my cadets abroad."],
+      ["H", "A bunker on every hill and a weapon in every home."]]],
+    ["Factory", "A foreign corporation wants to build an enormous plant in your country. The giant is not pleased.", [
+      ["K", "Ask the giant what it thinks before I answer."],
+      ["L", "Build it, and invite one of the giant's companies to build another."],
+      ["T", "Take the plant, and a loan from the other bloc too. No strings from either."],
+      ["B", "Accept, even with the special privileges they demand. I need the technology."]]],
+    ["Harbour", "The giant wants a naval base in your best harbour.", [
+      ["S", "Stall, and let it slip that another power has been asking as well."],
+      ["C", "Refuse, then lease the harbour to their rival."],
+      ["G", "Refuse, cite the treaty, and ask my guarantors to say so in public."],
+      ["H", "Refuse and sink old ships across the harbour mouth."]]],
+    ["Press", "Your biggest newspaper runs an editorial tearing into the giant. Their embassy is on the phone.", [
+      ["K", "Quietly ask the editor to tone it down from now on."],
+      ["C", "Reprint it in the state media."],
+      ["T", "Tell the embassy my press attacks the other bloc just as hard, and that is the point."],
+      ["H", "Tell them nothing and cut their embassy staff in half."]]],
+    ["Water", "A neighbour threatens to cut off the water it sells you.", [
+      ["L", "Build my own reservoirs and desalination plants, whatever it costs."],
+      ["S", "Complain to each great power separately and see who steps in."],
+      ["B", "Give way on the neighbour's side demand for now and quietly build my own supply."],
+      ["G", "Take it to arbitration under the water treaty."]]],
+    ["Aid", "The other great power offers a fortune in aid if you distance yourself from the giant.", [
+      ["K", "Decline politely. Not worth the risk."],
+      ["S", "Take it, then ask the giant to match it."],
+      ["B", "Take the engineers and the schools, turn down the political conditions."],
+      ["H", "Turn down both of them. Aid is a leash."]]],
+    ["Crisis", "Two great powers are in a standoff. Both demand that you take a side in public.", [
+      ["L", "Issue a statement of principle that names nobody, and keep trading with both."],
+      ["C", "Side openly with the giant's rival."],
+      ["T", "Condemn both, and call on other small states to do the same."],
+      ["G", "Say I will follow whatever the international body rules."]]],
+    ["Neutrality", "A journalist asks you whether a small country can ever really be neutral.", [
+      ["K", "Yes, as long as the big neighbour allows it."],
+      ["L", "Yes, if you are strong enough to make it stick."],
+      ["G", "Yes, if your neutrality is written into treaties that others have signed."],
+      ["H", "Neutral means alone. That suits me."]]],
+    ["Barracks", "Your generals are grumbling about your foreign policy.", [
+      ["S", "Replace them with people I trust and carry on as before."],
+      ["C", "Ask my ally to train a force that answers only to me."],
+      ["T", "Remind them who fought beside them, and remove anyone loyal to a foreign capital."],
+      ["B", "Reorganise the army on a foreign model and promote the trained officers over the old guard."]]],
+    ["Ultimatum", "The giant's troops mass on your border. You have 48 hours to change your government.", [
+      ["K", "Reshuffle the cabinet into something they can live with."],
+      ["C", "Call my patron and ask for a very public warning."],
+      ["B", "Offer a humiliating but limited concession that buys me years."],
+      ["G", "Mobilise and call my guarantors. If they will not come, I will not fight alone."]]],
+    ["Decline", "The power you leaned on most suddenly goes into decline.", [
+      ["L", "Limited damage. My eggs were never in one basket."],
+      ["S", "An opportunity. Every deal is open for renegotiation."],
+      ["T", "I never leaned on them. Time to grow the club."],
+      ["H", "Proof that you depend on no one. Close the doors."]]],
+    ["Personal", "How do you handle the giant's leader, person to person?", [
+      ["K", "Regular visits, hunting trips, long evenings. I want his personal trust."],
+      ["L", "Respectful, frank, strictly business."],
+      ["S", "Banquets, gifts, a song composed in his honour."],
+      ["C", "Denounce him in a four-hour speech."]]],
+    ["Legacy", "What should the history books say about you?", [
+      ["T", "He said no to both sides."],
+      ["B", "He gave up provinces and kept the country."],
+      ["G", "He kept his word and expected others to keep theirs."],
+      ["H", "Nobody ever got in."]]]
+  ];
+  var T = {
+    K: { name: "The Kekkonen", tag: "Route: accommodate", seal: "Accommodate", label: "Accommodate",
+      style: "You are a realist with a long fuse. Neighbours cannot be moved, so you give the giant what it needs to feel safe and keep everything else for yourself. You can live with wounded pride if daily life goes on as normal.",
+      who: "Your historical match: Urho Kekkonen, President of Finland",
+      r1: "A border of more than 1,300 km with the Soviet Union, which Finland had fought in the Winter War of 1939–40.",
+      r2: "Stay out of NATO, never let Finnish soil be used against Moscow, and weigh Soviet security concerns before every big foreign policy move.",
+      r3: "Finland stayed independent through the whole Cold War, with a working parliament and a market economy. The West coined a word for it, Finlandisation, and did not mean it kindly.",
+      r4: "Deference becomes a habit. First it is your foreign policy, then it is what your newspapers feel able to print.",
+      stats: [7, 6, 2, 3] },
+    L: { name: "The Lee Kuan Yew", tag: "Route: hedge", seal: "Hedge", label: "Hedge",
+      style: "You are a trader with spines. You hand your survival to nobody. First you make yourself strong, then you give every great power a stake in you at the same time, so none of them will let another swallow you.",
+      who: "Your historical match: Lee Kuan Yew, Prime Minister of Singapore",
+      r1: "Pushed out of Malaysia on 9 August 1965. No resources, no hinterland, and fresh water bought from Johor across the strait.",
+      r2: "National service from 1967, multinationals invited in, and a port and economy that every major power wanted to do business with.",
+      r3: "He was prime minister until 1990 and Singapore became one of the richest countries on earth. The approach became known as the poison shrimp strategy: a big fish can eat you, but it will regret it.",
+      r4: "It is expensive. It needs money, discipline and a good location. And it stops working the day the great powers force you to choose.",
+      stats: [9, 7, 8, 6] },
+    S: { name: "The Sihanouk", tag: "Route: walk the tightrope", seal: "Tightrope", label: "Tightrope",
+      style: "You are a tightrope walker. You trust your own charm and timing: lean one way today, the other tomorrow, and let the great powers check each other. You hold few cards, so the main card is you.",
+      who: "Your historical match: Norodom Sihanouk of Cambodia",
+      r1: "The Vietnam War was being fought next door, and the United States, the Soviet Union, China and North Vietnam all wanted him on side.",
+      r2: "Declared neutrality. Broke off relations with Washington in 1965 and restored them in 1969, giving every side a little and nobody enough.",
+      r3: "He stayed on the rope for more than a decade. On 18 March 1970, while he was abroad, his own National Assembly voted him out. He became king again in 1993.",
+      r4: "What you give one side is usually taken from the other. And while you are busy abroad, the rope frays at home.",
+      stats: [1, 2, 3, 1] },
+    C: { name: "The Castro", tag: "Route: find a patron", seal: "Patron", label: "Patron",
+      style: "You are a gambler who will not bow. When the nearest giant leans on you, you go straight to its rival for protection. You can live with blockades and hard years. You cannot live with being told what to do.",
+      who: "Your historical match: Fidel Castro of Cuba",
+      r1: "Roughly 150 km from Florida, and invaded at the Bay of Pigs in 1961 by exiles trained by the CIA.",
+      r2: "Aligned with the Soviet Union and took its economic and military support.",
+      r3: "The government survived and he held power until 2008. The price was a full US embargo from 1962 and an economic collapse when the Soviet Union dissolved in 1991.",
+      r4: "To your patron you may be just a card to play. In 1962 Moscow agreed to pull its missiles out of Cuba without consulting Castro.",
+      stats: [3, 5, 3, 7] },
+    T: { name: "The Tito", tag: "Route: refuse both camps", seal: "Non-aligned", label: "Refuse both",
+      style: "You are the one who says no twice. You will not take orders from either bloc, including the one you are supposed to belong to. You take help from both without conditions and gather other small states around you.",
+      who: "Your historical match: Josip Broz Tito of Yugoslavia",
+      r1: "A communist state that Stalin expelled from the Soviet bloc in 1948 and then put under economic blockade.",
+      r2: "Refused to back down, accepted Western aid without joining the West, and hosted the first Non-Aligned Movement summit in Belgrade in 1961.",
+      r3: "Yugoslavia kept its independence from both camps for more than three decades. Tito ruled until his death in 1980.",
+      r4: "A course that depends on one person's authority is hard to hand on. Yugoslavia broke apart in war about a decade after he died.",
+      stats: [6, 6, 8, 6] },
+    B: { name: "The Chulalongkorn", tag: "Route: bend and reform", seal: "Bend", label: "Bend & reform",
+      style: "You are the bamboo. You give up what you cannot hold in order to keep what matters most, and you spend the time you have bought on learning the great powers' own methods as fast as you can.",
+      who: "Your historical match: King Chulalongkorn (Rama V) of Siam",
+      r1: "Squeezed between British Burma and Malaya on one side and French Indochina on the other. In 1893 French gunboats sailed up to Bangkok.",
+      r2: "Ceded Laos, western Cambodia and four Malay states to France and Britain between 1893 and 1909, while building railways and modern ministries, hiring foreign advisers and abolishing slavery.",
+      r3: "Siam lost large tracts of territory and was the only country in Southeast Asia never colonised.",
+      r4: "Every concession teaches the powers that you concede. The route only works if the reforms outrun their appetite.",
+      stats: [6, 6, 5, 3] },
+    G: { name: "The Beneš", tag: "Route: trust the guarantees", seal: "Guarantees", label: "Guarantees",
+      style: "You are the believer in signed paper. You build your security on treaties, distant allies and international law, and you keep your side of every bargain. You would rather be let down than be the one who started a hopeless war.",
+      who: "Your historical match: Edvard Beneš, President of Czechoslovakia",
+      r1: "A democracy next to Nazi Germany, with strong border forts and alliance treaties with France and the Soviet Union.",
+      r2: "Mobilised in September 1938 and looked to his allies to honour their commitments.",
+      r3: "At Munich on 30 September 1938, Britain and France agreed to give Germany the border regions. Czechoslovakia was not at the table. Beneš accepted and resigned days later. Germany occupied the rest in March 1939.",
+      r4: "A guarantee is worth what the guarantor will risk for you on the day. You do not find that out until the day comes.",
+      stats: [1, 3, 2, 1] },
+    H: { name: "The Hoxha", tag: "Route: fortress", seal: "Fortress", label: "Fortress",
+      style: "You are the one who locks the door. Every ally is a future betrayal, so you depend on nobody, prepare for invasion from every direction, and accept the cost of being alone.",
+      who: "Your historical match: Enver Hoxha of Albania",
+      r1: "A small, poor state on the Adriatic, surrounded by larger neighbours and courted in turn by bigger communist powers.",
+      r2: "Broke with Yugoslavia in 1948, the Soviet Union in 1961 and China in 1978, then built more than 170,000 concrete bunkers across the country.",
+      r3: "Albania was never invaded and Hoxha ruled until his death in 1985. It was also the poorest and most closed country in Europe, and the system fell apart within a few years of his death.",
+      r4: "The walls keep your own people in as well. The invasion you spent everything preparing for may never come.",
+      stats: [2, 2, 1, 6] }
+  };
+  var ORDER = ["K", "L", "S", "C", "T", "B", "G", "H"], OFFERED = 8;
+  var STAT = ["Strength", "Support", "Diplomacy", "Military"], LTR = ["A", "B", "C", "D"];
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { i: -1, a: [] };
+
+  function shown(q) { var o = Q[q][2], r = (q * 3 + 1) % 4; return o.slice(r).concat(o.slice(0, r)); }
+  function view(name) { ["intro", "quiz", "result"].forEach(function (s) { $(s).hidden = s !== name; }); }
+
+  function render() {
+    if (state.i < 0) { view("intro"); return; }
+    if (state.i >= Q.length) { renderResult(); return; }
+    view("quiz");
+    var q = Q[state.i];
+    $("qno").textContent = "File " + (state.i + 1) + " of " + Q.length;
+    $("qtag").textContent = q[0];
+    $("prog").style.width = (state.i / Q.length * 100) + "%";
+    $("qtext").textContent = q[1];
+    var box = $("opts"); box.textContent = "";
+    shown(state.i).forEach(function (o, k) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "opt";
+      b.setAttribute("aria-pressed", state.a[state.i] === o[0] ? "true" : "false");
+      var l = document.createElement("span"); l.className = "ltr"; l.textContent = LTR[k];
+      var t = document.createElement("span"); t.className = "txt"; t.textContent = o[1];
+      b.appendChild(l); b.appendChild(t);
+      b.addEventListener("click", function () { state.a[state.i] = o[0]; state.i++; render(); window.scrollTo(0, 0); });
+      box.appendChild(b);
+    });
+  }
+
+  function tally() {
+    var c = {}, last = {};
+    ORDER.forEach(function (k) { c[k] = 0; last[k] = -1; });
+    state.a.forEach(function (k, i) { if (c[k] !== undefined) { c[k]++; last[k] = i; } });
+    var rank = ORDER.slice().sort(function (x, y) { return c[y] - c[x] || last[y] - last[x]; });
+    return { c: c, rank: rank };
+  }
+  function shareText(t) {
+    var top = T[t.rank[0]], sec = t.rank[1];
+    return "I took the Small State Survival Test and got " + top.name + " (" + top.label.toLowerCase() + ")" +
+      (t.c[sec] > 0 ? ", with a streak of " + T[sec].name : "") + ". Which leader are you?";
+  }
+  function renderResult() {
+    view("result");
+    var t = tally(), top = t.rank[0], R = T[top];
+    $("seal").textContent = R.seal; $("rname").textContent = R.name; $("rtag").textContent = R.tag;
+    $("rstyle").textContent = R.style; $("rwho").textContent = R.who;
+    $("r1").textContent = R.r1; $("r2").textContent = R.r2; $("r3").textContent = R.r3; $("r4").textContent = R.r4;
+    var s = $("stats"); s.textContent = "";
+    R.stats.forEach(function (v, i) {
+      var d = document.createElement("div"), b = document.createElement("b"), sp = document.createElement("span");
+      b.textContent = v; sp.textContent = STAT[i]; d.appendChild(b); d.appendChild(sp); s.appendChild(d);
+    });
+    var bars = $("bars"); bars.textContent = "";
+    t.rank.forEach(function (k) {
+      var a = document.createElement("span"); a.textContent = T[k].label;
+      var bar = document.createElement("div"); bar.className = "bar" + (k === top ? " top" : "");
+      var f = document.createElement("i"); f.style.width = (t.c[k] / OFFERED * 100) + "%"; bar.appendChild(f);
+      var n = document.createElement("span"); n.className = "n"; n.textContent = t.c[k] + "/" + OFFERED;
+      bars.appendChild(a); bars.appendChild(bar); bars.appendChild(n);
+    });
+    var sec = t.rank[1];
+    $("second").textContent = "Each route was on offer in 8 of the 16 files. " + (t.c[sec] > 0
+      ? "Your second instinct is " + T[sec].label.toLowerCase() + " (" + T[sec].name + ")." +
+        (t.c[sec] === t.c[top] ? " The two were tied, so your most recent choice decided it." : "")
+      : "You took the same route every time it was offered.");
+    $("sharetext").textContent = shareText(t);
+    $("copied").textContent = "";
+  }
+
+  $("start").addEventListener("click", function () { state = { i: 0, a: [] }; render(); });
+  $("back").addEventListener("click", function () { state.i--; render(); });
+  $("again").addEventListener("click", function () { state = { i: -1, a: [] }; render(); window.scrollTo(0, 0); });
+  $("copy").addEventListener("click", function () {
+    var txt = $("sharetext").textContent;
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents($("sharetext"));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      $("copied").textContent = "Text selected below. Copy it manually.";
+    }
+    try {
+      navigator.clipboard.writeText(txt).then(function () { $("copied").textContent = "Copied"; }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  function boot(d) {
+    if (d && typeof d.i === "number" && Array.isArray(d.a)) state = { i: d.i, a: d.a };
+    render();
+  }
+  var hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) hot.snapshot(function () { return state; });
+  if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
